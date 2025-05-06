@@ -1,11 +1,59 @@
 /******/ (() => { // webpackBootstrap
 /******/ 	"use strict";
-/******/ 	var __webpack_modules__ = ({
+/******/ 	var __webpack_modules__ = ([
+/* 0 */,
+/* 1 */
+/***/ ((module) => {
 
-/***/ "./apps/auth-server/src/auth/auth.controller.ts":
-/*!******************************************************!*\
-  !*** ./apps/auth-server/src/auth/auth.controller.ts ***!
-  \******************************************************/
+module.exports = require("@nestjs/common");
+
+/***/ }),
+/* 2 */
+/***/ ((module) => {
+
+module.exports = require("@nestjs/config");
+
+/***/ }),
+/* 3 */
+/***/ ((module) => {
+
+module.exports = require("@nestjs/core");
+
+/***/ }),
+/* 4 */
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.AuthModule = void 0;
+const common_1 = __webpack_require__(1);
+const config_1 = __webpack_require__(2);
+const auth_controller_1 = __webpack_require__(5);
+const auth_service_1 = __webpack_require__(6);
+let AuthModule = class AuthModule {
+};
+exports.AuthModule = AuthModule;
+exports.AuthModule = AuthModule = __decorate([
+    (0, common_1.Module)({
+        imports: [
+            config_1.ConfigModule.forRoot({
+                isGlobal: true,
+            }),
+        ],
+        controllers: [auth_controller_1.AuthController],
+        providers: [auth_service_1.AuthService],
+    })
+], AuthModule);
+
+
+/***/ }),
+/* 5 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 
@@ -24,8 +72,8 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 var _a;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.AuthController = void 0;
-const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
-const auth_service_1 = __webpack_require__(/*! ./auth.service */ "./apps/auth-server/src/auth/auth.service.ts");
+const common_1 = __webpack_require__(1);
+const auth_service_1 = __webpack_require__(6);
 let AuthController = class AuthController {
     constructor(authService) {
         this.authService = authService;
@@ -64,48 +112,7 @@ exports.AuthController = AuthController = __decorate([
 
 
 /***/ }),
-
-/***/ "./apps/auth-server/src/auth/auth.module.ts":
-/*!**************************************************!*\
-  !*** ./apps/auth-server/src/auth/auth.module.ts ***!
-  \**************************************************/
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-
-var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
-    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
-    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
-    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
-    return c > 3 && r && Object.defineProperty(target, key, r), r;
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.AuthModule = void 0;
-const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
-const config_1 = __webpack_require__(/*! @nestjs/config */ "@nestjs/config");
-const auth_controller_1 = __webpack_require__(/*! ./auth.controller */ "./apps/auth-server/src/auth/auth.controller.ts");
-const auth_service_1 = __webpack_require__(/*! ./auth.service */ "./apps/auth-server/src/auth/auth.service.ts");
-let AuthModule = class AuthModule {
-};
-exports.AuthModule = AuthModule;
-exports.AuthModule = AuthModule = __decorate([
-    (0, common_1.Module)({
-        imports: [
-            config_1.ConfigModule.forRoot({
-                isGlobal: true,
-            }),
-        ],
-        controllers: [auth_controller_1.AuthController],
-        providers: [auth_service_1.AuthService],
-    })
-], AuthModule);
-
-
-/***/ }),
-
-/***/ "./apps/auth-server/src/auth/auth.service.ts":
-/*!***************************************************!*\
-  !*** ./apps/auth-server/src/auth/auth.service.ts ***!
-  \***************************************************/
+/* 6 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 
@@ -122,9 +129,9 @@ var AuthService_1;
 var _a;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.AuthService = void 0;
-const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
-const config_1 = __webpack_require__(/*! @nestjs/config */ "@nestjs/config");
-const googleapis_1 = __webpack_require__(/*! googleapis */ "googleapis");
+const common_1 = __webpack_require__(1);
+const config_1 = __webpack_require__(2);
+const googleapis_1 = __webpack_require__(7);
 let AuthService = AuthService_1 = class AuthService {
     constructor(configService) {
         this.configService = configService;
@@ -175,48 +182,13 @@ exports.AuthService = AuthService = AuthService_1 = __decorate([
 
 
 /***/ }),
-
-/***/ "@nestjs/common":
-/*!*********************************!*\
-  !*** external "@nestjs/common" ***!
-  \*********************************/
-/***/ ((module) => {
-
-module.exports = require("@nestjs/common");
-
-/***/ }),
-
-/***/ "@nestjs/config":
-/*!*********************************!*\
-  !*** external "@nestjs/config" ***!
-  \*********************************/
-/***/ ((module) => {
-
-module.exports = require("@nestjs/config");
-
-/***/ }),
-
-/***/ "@nestjs/core":
-/*!*******************************!*\
-  !*** external "@nestjs/core" ***!
-  \*******************************/
-/***/ ((module) => {
-
-module.exports = require("@nestjs/core");
-
-/***/ }),
-
-/***/ "googleapis":
-/*!*****************************!*\
-  !*** external "googleapis" ***!
-  \*****************************/
+/* 7 */
 /***/ ((module) => {
 
 module.exports = require("googleapis");
 
 /***/ })
-
-/******/ 	});
+/******/ 	]);
 /************************************************************************/
 /******/ 	// The module cache
 /******/ 	var __webpack_module_cache__ = {};
@@ -247,15 +219,12 @@ var __webpack_exports__ = {};
 // This entry needs to be wrapped in an IIFE because it needs to be isolated against other modules in the chunk.
 (() => {
 var exports = __webpack_exports__;
-/*!**************************************!*\
-  !*** ./apps/auth-server/src/main.ts ***!
-  \**************************************/
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
-const config_1 = __webpack_require__(/*! @nestjs/config */ "@nestjs/config");
-const core_1 = __webpack_require__(/*! @nestjs/core */ "@nestjs/core");
-const auth_module_1 = __webpack_require__(/*! ./auth/auth.module */ "./apps/auth-server/src/auth/auth.module.ts");
+const common_1 = __webpack_require__(1);
+const config_1 = __webpack_require__(2);
+const core_1 = __webpack_require__(3);
+const auth_module_1 = __webpack_require__(4);
 async function bootstrap() {
     const app = await core_1.NestFactory.create(auth_module_1.AuthModule);
     const configService = app.get(config_1.ConfigService);
