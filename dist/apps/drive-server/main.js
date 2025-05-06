@@ -69,7 +69,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c, _d, _e;
+var _a, _b, _c;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.DriveController = void 0;
 const common_1 = __webpack_require__(1);
@@ -100,26 +100,45 @@ let DriveController = class DriveController {
     }
     async getFile(tokens, fileId) {
         await this.validateAndSetAuth(tokens);
-        return this.driveService.getFile(fileId);
+        return this.driveService.getFile(fileId, tokens);
     }
-    async createFile(tokens, file, metadata) {
+    async createFiles(tokens, body) {
         console.log("tokens", tokens);
         await this.validateAndSetAuth(tokens);
-        if (!file) {
-            throw new common_1.HttpException("No file uploaded", common_1.HttpStatus.BAD_REQUEST);
+        if (!body.filePaths || !Array.isArray(body.filePaths) || body.filePaths.length === 0) {
+            throw new common_1.HttpException("No file paths provided", common_1.HttpStatus.BAD_REQUEST);
         }
-        return this.driveService.createFile(file, metadata);
+        return this.driveService.createFiles(body.filePaths, body.metadata, tokens);
     }
     async updateFile(tokens, fileId, file, metadata) {
         await this.validateAndSetAuth(tokens);
         if (!file) {
             throw new common_1.HttpException("No file uploaded", common_1.HttpStatus.BAD_REQUEST);
         }
-        return this.driveService.updateFile(fileId, file, metadata);
+        return this.driveService.updateFile(fileId, file, metadata, tokens);
     }
     async deleteFile(tokens, fileId) {
         await this.validateAndSetAuth(tokens);
-        return this.driveService.deleteFile(fileId);
+        return this.driveService.deleteFile(fileId, tokens);
+    }
+    async createFolder(tokens, body) {
+        console.log("tokens", tokens);
+        await this.validateAndSetAuth(tokens);
+        if (!body.folderName) {
+            throw new common_1.HttpException("No folder name provided", common_1.HttpStatus.BAD_REQUEST);
+        }
+        return this.driveService.createFolder(body.folderName, body.metadata, tokens);
+    }
+    async moveFiles(tokens, body) {
+        console.log("tokens", tokens);
+        await this.validateAndSetAuth(tokens);
+        if (!body.fileIds || !Array.isArray(body.fileIds) || body.fileIds.length === 0) {
+            throw new common_1.HttpException("No file IDs provided", common_1.HttpStatus.BAD_REQUEST);
+        }
+        if (!body.destinationFolderId) {
+            throw new common_1.HttpException("No destination folder ID provided", common_1.HttpStatus.BAD_REQUEST);
+        }
+        return this.driveService.moveFiles(body.fileIds, body.destinationFolderId, tokens);
     }
 };
 exports.DriveController = DriveController;
@@ -142,14 +161,12 @@ __decorate([
 ], DriveController.prototype, "getFile", null);
 __decorate([
     (0, common_1.Post)("files"),
-    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)("file")),
     __param(0, (0, common_1.Headers)("x-auth-tokens")),
-    __param(1, (0, common_1.UploadedFile)()),
-    __param(2, (0, common_1.Body)()),
+    __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, typeof (_c = typeof Express !== "undefined" && (_b = Express.Multer) !== void 0 && _b.File) === "function" ? _c : Object, Object]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
-], DriveController.prototype, "createFile", null);
+], DriveController.prototype, "createFiles", null);
 __decorate([
     (0, common_1.Put)("files/:fileId"),
     (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)("file")),
@@ -158,7 +175,7 @@ __decorate([
     __param(2, (0, common_1.UploadedFile)()),
     __param(3, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, typeof (_e = typeof Express !== "undefined" && (_d = Express.Multer) !== void 0 && _d.File) === "function" ? _e : Object, Object]),
+    __metadata("design:paramtypes", [String, String, typeof (_c = typeof Express !== "undefined" && (_b = Express.Multer) !== void 0 && _b.File) === "function" ? _c : Object, Object]),
     __metadata("design:returntype", Promise)
 ], DriveController.prototype, "updateFile", null);
 __decorate([
@@ -169,6 +186,22 @@ __decorate([
     __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", Promise)
 ], DriveController.prototype, "deleteFile", null);
+__decorate([
+    (0, common_1.Post)("folders"),
+    __param(0, (0, common_1.Headers)("x-auth-tokens")),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], DriveController.prototype, "createFolder", null);
+__decorate([
+    (0, common_1.Post)("files/move"),
+    __param(0, (0, common_1.Headers)("x-auth-tokens")),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], DriveController.prototype, "moveFiles", null);
 exports.DriveController = DriveController = __decorate([
     (0, common_1.Controller)("drive"),
     __metadata("design:paramtypes", [typeof (_a = typeof drive_service_1.DriveService !== "undefined" && drive_service_1.DriveService) === "function" ? _a : Object])
@@ -207,10 +240,20 @@ exports.DriveService = void 0;
 const common_1 = __webpack_require__(1);
 const config_1 = __webpack_require__(2);
 const googleapis_1 = __webpack_require__(7);
+const stream_1 = __webpack_require__(9);
+const fs = __webpack_require__(10);
+const path = __webpack_require__(11);
 let DriveService = class DriveService {
     constructor(configService) {
         this.configService = configService;
         this.drive = googleapis_1.google.drive("v3");
+    }
+    bufferToStream(buffer) {
+        const stream = new stream_1.Readable();
+        stream._read = () => { };
+        stream.push(buffer);
+        stream.push(null);
+        return stream;
     }
     async setAuthClient(authClient) {
         this.drive = googleapis_1.google.drive({
@@ -247,8 +290,17 @@ let DriveService = class DriveService {
             throw new common_1.HttpException("Failed to list files", common_1.HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-    async getFile(fileId) {
+    async getFile(fileId, tokens) {
         try {
+            if (tokens) {
+                let parsedTokens = JSON.parse(tokens);
+                if (typeof parsedTokens === "string") {
+                    parsedTokens = JSON.parse(parsedTokens);
+                }
+                const auth = new googleapis_1.Auth.OAuth2Client();
+                auth.setCredentials(parsedTokens);
+                await this.setAuthClient(auth);
+            }
             const response = await this.drive.files.get({
                 fileId,
                 fields: "id, name, mimeType, size, createdTime",
@@ -256,26 +308,118 @@ let DriveService = class DriveService {
             return response.data;
         }
         catch (error) {
+            console.log("Error getting file:", error);
             throw new common_1.HttpException("Failed to get file", common_1.HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-    async createFile(file, metadata) {
+    async createFiles(filePaths, metadata = {}, tokens) {
         try {
-            const response = await this.drive.files.create({
-                requestBody: Object.assign({ name: file.originalname, mimeType: file.mimetype }, metadata),
-                media: {
-                    mimeType: file.mimetype,
-                    body: file.buffer,
-                },
-            });
-            return response.data;
+            if (!Array.isArray(filePaths) || filePaths.length === 0) {
+                throw new common_1.HttpException("No file paths provided", common_1.HttpStatus.BAD_REQUEST);
+            }
+            for (const filePath of filePaths) {
+                if (!fs.existsSync(filePath)) {
+                    throw new common_1.HttpException(`File not found: ${filePath}`, common_1.HttpStatus.BAD_REQUEST);
+                }
+            }
+            if (tokens) {
+                let parsedTokens = JSON.parse(tokens);
+                if (typeof parsedTokens === "string") {
+                    parsedTokens = JSON.parse(parsedTokens);
+                }
+                const auth = new googleapis_1.Auth.OAuth2Client();
+                auth.setCredentials(parsedTokens);
+                await this.setAuthClient(auth);
+            }
+            const results = [];
+            for (const filePath of filePaths) {
+                const stats = fs.statSync(filePath);
+                const fileName = path.basename(filePath);
+                const mimeType = this.getMimeType(fileName);
+                console.log("Creating file with metadata:", metadata);
+                console.log("File details:", {
+                    name: fileName,
+                    mimeType,
+                    size: stats.size,
+                    path: filePath
+                });
+                const requestBody = {
+                    name: fileName,
+                    description: metadata === null || metadata === void 0 ? void 0 : metadata.description,
+                    mimeType,
+                };
+                console.log("Request body:", requestBody);
+                const fileBuffer = fs.readFileSync(filePath);
+                const media = {
+                    mimeType,
+                    body: this.bufferToStream(fileBuffer)
+                };
+                console.log("Created readable stream from file");
+                const response = await this.drive.files.create({
+                    requestBody,
+                    media,
+                    fields: 'id, name, mimeType, size, createdTime',
+                });
+                console.log("Upload response:", response.data);
+                results.push(response.data);
+            }
+            return {
+                message: `Successfully uploaded ${results.length} files`,
+                files: results
+            };
         }
         catch (error) {
-            throw new common_1.HttpException("Failed to create file", common_1.HttpStatus.INTERNAL_SERVER_ERROR);
+            console.log("Error creating files:", error);
+            console.log("Error details:", {
+                message: error.message,
+                code: error.code,
+                errors: error.errors,
+                stack: error.stack
+            });
+            throw new common_1.HttpException(`Failed to create files: ${error.message}`, common_1.HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-    async updateFile(fileId, file, metadata) {
+    getMimeType(fileName) {
+        const ext = path.extname(fileName).toLowerCase();
+        const mimeTypes = {
+            '.txt': 'text/plain',
+            '.html': 'text/html',
+            '.css': 'text/css',
+            '.js': 'application/javascript',
+            '.json': 'application/json',
+            '.png': 'image/png',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.gif': 'image/gif',
+            '.svg': 'image/svg+xml',
+            '.pdf': 'application/pdf',
+            '.doc': 'application/msword',
+            '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            '.xls': 'application/vnd.ms-excel',
+            '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            '.ppt': 'application/vnd.ms-powerpoint',
+            '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            '.zip': 'application/zip',
+            '.rar': 'application/x-rar-compressed',
+            '.mp3': 'audio/mpeg',
+            '.mp4': 'video/mp4',
+            '.ts': 'application/typescript',
+            '.tsx': 'application/typescript',
+            '.jsx': 'application/javascript',
+        };
+        return mimeTypes[ext] || 'application/octet-stream';
+    }
+    async updateFile(fileId, file, metadata, tokens) {
         try {
+            if (tokens) {
+                let parsedTokens = JSON.parse(tokens);
+                if (typeof parsedTokens === "string") {
+                    parsedTokens = JSON.parse(parsedTokens);
+                }
+                const auth = new googleapis_1.Auth.OAuth2Client();
+                auth.setCredentials(parsedTokens);
+                await this.setAuthClient(auth);
+            }
             const response = await this.drive.files.update({
                 fileId,
                 requestBody: Object.assign({ name: file.originalname, mimeType: file.mimetype }, metadata),
@@ -287,18 +431,119 @@ let DriveService = class DriveService {
             return response.data;
         }
         catch (error) {
+            console.log("Error updating file:", error);
             throw new common_1.HttpException("Failed to update file", common_1.HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-    async deleteFile(fileId) {
+    async deleteFile(fileId, tokens) {
         try {
+            if (tokens) {
+                let parsedTokens = JSON.parse(tokens);
+                if (typeof parsedTokens === "string") {
+                    parsedTokens = JSON.parse(parsedTokens);
+                }
+                const auth = new googleapis_1.Auth.OAuth2Client();
+                auth.setCredentials(parsedTokens);
+                await this.setAuthClient(auth);
+            }
             await this.drive.files.delete({
                 fileId,
             });
             return { message: "File deleted successfully" };
         }
         catch (error) {
+            console.log("Error deleting file:", error);
             throw new common_1.HttpException("Failed to delete file", common_1.HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+    async createFolder(folderName, metadata = {}, tokens) {
+        try {
+            if (tokens) {
+                let parsedTokens = JSON.parse(tokens);
+                if (typeof parsedTokens === "string") {
+                    parsedTokens = JSON.parse(parsedTokens);
+                }
+                const auth = new googleapis_1.Auth.OAuth2Client();
+                auth.setCredentials(parsedTokens);
+                await this.setAuthClient(auth);
+            }
+            const requestBody = {
+                name: folderName,
+                description: metadata === null || metadata === void 0 ? void 0 : metadata.description,
+                mimeType: 'application/vnd.google-apps.folder',
+            };
+            console.log("Creating folder with metadata:", metadata);
+            console.log("Folder details:", {
+                name: folderName,
+                mimeType: requestBody.mimeType
+            });
+            const response = await this.drive.files.create({
+                requestBody,
+                fields: 'id, name, mimeType, createdTime',
+            });
+            console.log("Folder creation response:", response.data);
+            return response.data;
+        }
+        catch (error) {
+            console.log("Error creating folder:", error);
+            console.log("Error details:", {
+                message: error.message,
+                code: error.code,
+                errors: error.errors,
+                stack: error.stack
+            });
+            throw new common_1.HttpException(`Failed to create folder: ${error.message}`, common_1.HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+    async moveFiles(fileIds, destinationFolderId, tokens) {
+        var _a;
+        try {
+            if (!Array.isArray(fileIds) || fileIds.length === 0) {
+                throw new common_1.HttpException("No file IDs provided", common_1.HttpStatus.BAD_REQUEST);
+            }
+            if (!destinationFolderId) {
+                throw new common_1.HttpException("No destination folder ID provided", common_1.HttpStatus.BAD_REQUEST);
+            }
+            if (tokens) {
+                let parsedTokens = JSON.parse(tokens);
+                if (typeof parsedTokens === "string") {
+                    parsedTokens = JSON.parse(parsedTokens);
+                }
+                const auth = new googleapis_1.Auth.OAuth2Client();
+                auth.setCredentials(parsedTokens);
+                await this.setAuthClient(auth);
+            }
+            const results = [];
+            for (const fileId of fileIds) {
+                console.log(`Moving file ${fileId} to folder ${destinationFolderId}`);
+                const file = await this.drive.files.get({
+                    fileId,
+                    fields: 'parents'
+                });
+                const previousParents = ((_a = file.data.parents) === null || _a === void 0 ? void 0 : _a.join(',')) || '';
+                const response = await this.drive.files.update({
+                    fileId,
+                    addParents: destinationFolderId,
+                    removeParents: previousParents,
+                    fields: 'id, name, mimeType, parents',
+                });
+                console.log("Move response:", response.data);
+                results.push(response.data);
+            }
+            return {
+                message: `Successfully moved ${results.length} files`,
+                files: results
+            };
+        }
+        catch (error) {
+            console.log("Error moving files:", error);
+            console.log("Error details:", {
+                message: error.message,
+                code: error.code,
+                errors: error.errors,
+                stack: error.stack
+            });
+            throw new common_1.HttpException(`Failed to move files: ${error.message}`, common_1.HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 };
@@ -308,6 +553,24 @@ exports.DriveService = DriveService = __decorate([
     __metadata("design:paramtypes", [typeof (_a = typeof config_1.ConfigService !== "undefined" && config_1.ConfigService) === "function" ? _a : Object])
 ], DriveService);
 
+
+/***/ }),
+/* 9 */
+/***/ ((module) => {
+
+module.exports = require("stream");
+
+/***/ }),
+/* 10 */
+/***/ ((module) => {
+
+module.exports = require("fs");
+
+/***/ }),
+/* 11 */
+/***/ ((module) => {
+
+module.exports = require("path");
 
 /***/ })
 /******/ 	]);

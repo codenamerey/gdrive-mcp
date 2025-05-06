@@ -291,7 +291,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 var DriveTool_1;
-var _a, _b, _c, _d, _e, _f;
+var _a, _b, _c, _d, _e, _f, _g, _h;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.DriveTool = void 0;
 const common_1 = __webpack_require__(3);
@@ -351,8 +351,8 @@ let DriveTool = DriveTool_1 = class DriveTool {
                         text: "File retrieved successfully",
                     },
                     {
-                        type: "json",
-                        json: result,
+                        type: "text",
+                        text: JSON.stringify(result, null, 2),
                     },
                 ],
             };
@@ -369,35 +369,25 @@ let DriveTool = DriveTool_1 = class DriveTool {
             };
         }
     }
-    async createFile({ fileName, mimeType, content, isBase64, metadata }, context) {
+    async createFiles({ filePaths, metadata, tokens }, context) {
         try {
-            const tokens = await this.getTokensFromContext(context);
-            await context.reportProgress({ progress: 25, total: 100 });
-            let buffer;
-            if (isBase64) {
-                buffer = Buffer.from(content, "base64");
-            }
-            else {
-                buffer = Buffer.from(content, "utf-8");
-            }
             await context.reportProgress({ progress: 50, total: 100 });
-            const result = await this.driveService.createFile(tokens, buffer, fileName, mimeType, metadata);
-            await context.reportProgress({ progress: 100, total: 100 });
+            const result = await this.driveService.createFiles(filePaths, metadata, tokens);
             return {
                 content: [
                     {
                         type: "text",
-                        text: "File created successfully",
+                        text: result.message,
                     },
                     {
-                        type: "json",
-                        json: result,
+                        type: "text",
+                        text: JSON.stringify(result.files, null, 2),
                     },
                 ],
             };
         }
         catch (error) {
-            this.logger.error(`Failed to create file: ${error.message}`);
+            this.logger.error(`Failed to create files: ${error.message}`);
             return {
                 content: [
                     {
@@ -408,10 +398,9 @@ let DriveTool = DriveTool_1 = class DriveTool {
             };
         }
     }
-    async updateFile({ fileId, fileName, mimeType, content, isBase64, metadata }, context) {
+    async updateFile({ fileId, fileName, mimeType, content, isBase64, metadata, tokens }, context) {
         try {
-            const tokens = await this.getTokensFromContext(context);
-            await context.reportProgress({ progress: 25, total: 100 });
+            await context.reportProgress({ progress: 50, total: 100 });
             let buffer;
             if (isBase64) {
                 buffer = Buffer.from(content, "base64");
@@ -419,9 +408,7 @@ let DriveTool = DriveTool_1 = class DriveTool {
             else {
                 buffer = Buffer.from(content, "utf-8");
             }
-            await context.reportProgress({ progress: 50, total: 100 });
             const result = await this.driveService.updateFile(tokens, fileId, buffer, fileName, mimeType, metadata);
-            await context.reportProgress({ progress: 100, total: 100 });
             return {
                 content: [
                     {
@@ -429,8 +416,8 @@ let DriveTool = DriveTool_1 = class DriveTool {
                         text: "File updated successfully",
                     },
                     {
-                        type: "json",
-                        json: result,
+                        type: "text",
+                        text: JSON.stringify(result, null, 2),
                     },
                 ],
             };
@@ -458,14 +445,72 @@ let DriveTool = DriveTool_1 = class DriveTool {
                         text: "File deleted successfully",
                     },
                     {
-                        type: "json",
-                        json: result,
+                        type: "text",
+                        text: JSON.stringify(result, null, 2),
                     },
                 ],
             };
         }
         catch (error) {
             this.logger.error(`Failed to delete file: ${error.message}`);
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: `Error: ${error.message}`,
+                    },
+                ],
+            };
+        }
+    }
+    async createFolder({ folderName, metadata, tokens }, context) {
+        try {
+            await context.reportProgress({ progress: 50, total: 100 });
+            const result = await this.driveService.createFolder(folderName, metadata, tokens);
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: "Folder created successfully",
+                    },
+                    {
+                        type: "text",
+                        text: JSON.stringify(result, null, 2),
+                    },
+                ],
+            };
+        }
+        catch (error) {
+            this.logger.error(`Failed to create folder: ${error.message}`);
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: `Error: ${error.message}`,
+                    },
+                ],
+            };
+        }
+    }
+    async moveFiles({ fileIds, destinationFolderId, tokens }, context) {
+        try {
+            await context.reportProgress({ progress: 50, total: 100 });
+            const result = await this.driveService.moveFiles(fileIds, destinationFolderId, tokens);
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: result.message,
+                    },
+                    {
+                        type: "text",
+                        text: JSON.stringify(result.files, null, 2),
+                    },
+                ],
+            };
+        }
+        catch (error) {
+            this.logger.error(`Failed to move files: ${error.message}`);
             return {
                 content: [
                     {
@@ -507,7 +552,12 @@ __decorate([
         description: "Get a specific file from Google Drive",
         parameters: zod_1.z.object({
             fileId: zod_1.z.string().describe("The ID of the file to get"),
-            tokens: zod_1.z.string().describe("OAuth2 tokens for authentication"),
+            tokens: zod_1.z
+                .object({
+                access_token: zod_1.z.string(),
+                refresh_token: zod_1.z.string(),
+            })
+                .describe("OAuth2 tokens for authentication"),
         }),
     }),
     __metadata("design:type", Function),
@@ -516,27 +566,19 @@ __decorate([
 ], DriveTool.prototype, "getFile", null);
 __decorate([
     (0, mcp_nest_1.Tool)({
-        name: "create-file",
-        description: "Create a new file in Google Drive",
+        name: "create-files",
+        description: "Create multiple files in Google Drive",
         parameters: zod_1.z.object({
-            fileName: zod_1.z.string().describe("The name of the file"),
-            mimeType: zod_1.z
-                .string()
-                .default("text/plain")
-                .describe("The MIME type of the file"),
-            content: zod_1.z
-                .string()
-                .describe("The content of the file (base64 encoded for binary files)"),
-            isBase64: zod_1.z
-                .boolean()
-                .default(false)
-                .describe("Whether the content is base64 encoded"),
+            filePaths: zod_1.z.array(zod_1.z.string()).describe("Array of paths to the files to upload"),
             metadata: zod_1.z
                 .record(zod_1.z.string())
                 .optional()
-                .describe("Additional metadata for the file"),
+                .describe("Additional metadata for the files"),
             tokens: zod_1.z
-                .string()
+                .object({
+                access_token: zod_1.z.string(),
+                refresh_token: zod_1.z.string(),
+            })
                 .optional()
                 .describe("OAuth2 tokens for authentication"),
         }),
@@ -544,7 +586,7 @@ __decorate([
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object, typeof (_d = typeof mcp_nest_1.Context !== "undefined" && mcp_nest_1.Context) === "function" ? _d : Object]),
     __metadata("design:returntype", Promise)
-], DriveTool.prototype, "createFile", null);
+], DriveTool.prototype, "createFiles", null);
 __decorate([
     (0, mcp_nest_1.Tool)({
         name: "update-file",
@@ -568,7 +610,10 @@ __decorate([
                 .optional()
                 .describe("Additional metadata for the file"),
             tokens: zod_1.z
-                .string()
+                .object({
+                access_token: zod_1.z.string(),
+                refresh_token: zod_1.z.string(),
+            })
                 .optional()
                 .describe("OAuth2 tokens for authentication"),
         }),
@@ -583,13 +628,61 @@ __decorate([
         description: "Delete a file from Google Drive",
         parameters: zod_1.z.object({
             fileId: zod_1.z.string().describe("The ID of the file to delete"),
-            tokens: zod_1.z.string().describe("OAuth2 tokens for authentication"),
+            tokens: zod_1.z
+                .object({
+                access_token: zod_1.z.string(),
+                refresh_token: zod_1.z.string(),
+            })
+                .describe("OAuth2 tokens for authentication"),
         }),
     }),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object, typeof (_f = typeof mcp_nest_1.Context !== "undefined" && mcp_nest_1.Context) === "function" ? _f : Object]),
     __metadata("design:returntype", Promise)
 ], DriveTool.prototype, "deleteFile", null);
+__decorate([
+    (0, mcp_nest_1.Tool)({
+        name: "create-folder",
+        description: "Create a new folder in Google Drive",
+        parameters: zod_1.z.object({
+            folderName: zod_1.z.string().describe("The name of the folder to create"),
+            metadata: zod_1.z
+                .record(zod_1.z.string())
+                .optional()
+                .describe("Additional metadata for the folder"),
+            tokens: zod_1.z
+                .object({
+                access_token: zod_1.z.string(),
+                refresh_token: zod_1.z.string(),
+            })
+                .optional()
+                .describe("OAuth2 tokens for authentication"),
+        }),
+    }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, typeof (_g = typeof mcp_nest_1.Context !== "undefined" && mcp_nest_1.Context) === "function" ? _g : Object]),
+    __metadata("design:returntype", Promise)
+], DriveTool.prototype, "createFolder", null);
+__decorate([
+    (0, mcp_nest_1.Tool)({
+        name: "move-files",
+        description: "Move multiple files to a different folder in Google Drive",
+        parameters: zod_1.z.object({
+            fileIds: zod_1.z.array(zod_1.z.string()).describe("Array of file IDs to move"),
+            destinationFolderId: zod_1.z.string().describe("ID of the destination folder"),
+            tokens: zod_1.z
+                .object({
+                access_token: zod_1.z.string(),
+                refresh_token: zod_1.z.string(),
+            })
+                .optional()
+                .describe("OAuth2 tokens for authentication"),
+        }),
+    }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, typeof (_h = typeof mcp_nest_1.Context !== "undefined" && mcp_nest_1.Context) === "function" ? _h : Object]),
+    __metadata("design:returntype", Promise)
+], DriveTool.prototype, "moveFiles", null);
 exports.DriveTool = DriveTool = DriveTool_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [typeof (_a = typeof drive_service_1.DriveService !== "undefined" && drive_service_1.DriveService) === "function" ? _a : Object])
@@ -663,28 +756,26 @@ let DriveService = DriveService_1 = class DriveService {
             throw new Error(`Failed to get file: ${error.message}`);
         }
     }
-    async createFile(tokens, file, fileName, mimeType, metadata = {}) {
+    async createFiles(filePaths, metadata = {}, tokens) {
         try {
             const isValid = await this.authService.validateTokens(tokens);
             if (!isValid) {
                 throw new Error("Invalid or expired tokens");
             }
-            const formData = new FormData();
-            formData.append("file", file, {
-                filename: fileName,
-                contentType: mimeType,
-            });
-            Object.keys(metadata).forEach((key) => {
-                formData.append(key, metadata[key]);
-            });
-            const response = await axios_1.default.post(`${this.driveServerUrl}/drive/files`, formData, {
-                headers: Object.assign({ "x-auth-tokens": JSON.stringify(tokens) }, formData.getHeaders()),
+            const response = await axios_1.default.post(`${this.driveServerUrl}/drive/files`, {
+                filePaths,
+                metadata
+            }, {
+                headers: {
+                    "x-auth-tokens": JSON.stringify(tokens),
+                    "Content-Type": "application/json"
+                },
             });
             return response.data;
         }
         catch (error) {
-            this.logger.error(`Failed to create file: ${error.message}`);
-            throw new Error(`Failed to create file: ${error.message}`);
+            this.logger.error(`Failed to create files: ${error.message}`);
+            throw new Error(`Failed to create files: ${error.message}`);
         }
     }
     async updateFile(tokens, fileId, file, fileName, mimeType, metadata = {}) {
@@ -727,6 +818,50 @@ let DriveService = DriveService_1 = class DriveService {
         catch (error) {
             this.logger.error(`Failed to delete file: ${error.message}`);
             throw new Error(`Failed to delete file: ${error.message}`);
+        }
+    }
+    async createFolder(folderName, metadata = {}, tokens) {
+        try {
+            const isValid = await this.authService.validateTokens(tokens);
+            if (!isValid) {
+                throw new Error("Invalid or expired tokens");
+            }
+            const response = await axios_1.default.post(`${this.driveServerUrl}/drive/folders`, {
+                folderName,
+                metadata
+            }, {
+                headers: {
+                    "x-auth-tokens": JSON.stringify(tokens),
+                    "Content-Type": "application/json"
+                },
+            });
+            return response.data;
+        }
+        catch (error) {
+            this.logger.error(`Failed to create folder: ${error.message}`);
+            throw new Error(`Failed to create folder: ${error.message}`);
+        }
+    }
+    async moveFiles(fileIds, destinationFolderId, tokens) {
+        try {
+            const isValid = await this.authService.validateTokens(tokens);
+            if (!isValid) {
+                throw new Error("Invalid or expired tokens");
+            }
+            const response = await axios_1.default.post(`${this.driveServerUrl}/drive/files/move`, {
+                fileIds,
+                destinationFolderId
+            }, {
+                headers: {
+                    "x-auth-tokens": JSON.stringify(tokens),
+                    "Content-Type": "application/json"
+                },
+            });
+            return response.data;
+        }
+        catch (error) {
+            this.logger.error(`Failed to move files: ${error.message}`);
+            throw new Error(`Failed to move files: ${error.message}`);
         }
     }
 };

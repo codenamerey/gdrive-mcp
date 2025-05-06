@@ -15,6 +15,7 @@ import {
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { Auth } from "googleapis";
+import { memoryStorage } from "multer";
 import { DriveService } from "./drive.service";
 
 @Controller("drive")
@@ -51,22 +52,20 @@ export class DriveController {
     @Param("fileId") fileId: string
   ) {
     await this.validateAndSetAuth(tokens);
-    return this.driveService.getFile(fileId);
+    return this.driveService.getFile(fileId, tokens);
   }
 
   @Post("files")
-  @UseInterceptors(FileInterceptor("file"))
-  async createFile(
+  async createFiles(
     @Headers("x-auth-tokens") tokens: string,
-    @UploadedFile() file: Express.Multer.File,
-    @Body() metadata: any
+    @Body() body: { filePaths: string[]; metadata?: any }
   ) {
     console.log("tokens", tokens);
     await this.validateAndSetAuth(tokens);
-    if (!file) {
-      throw new HttpException("No file uploaded", HttpStatus.BAD_REQUEST);
+    if (!body.filePaths || !Array.isArray(body.filePaths) || body.filePaths.length === 0) {
+      throw new HttpException("No file paths provided", HttpStatus.BAD_REQUEST);
     }
-    return this.driveService.createFile(file, metadata);
+    return this.driveService.createFiles(body.filePaths, body.metadata, tokens);
   }
 
   @Put("files/:fileId")
@@ -81,7 +80,7 @@ export class DriveController {
     if (!file) {
       throw new HttpException("No file uploaded", HttpStatus.BAD_REQUEST);
     }
-    return this.driveService.updateFile(fileId, file, metadata);
+    return this.driveService.updateFile(fileId, file, metadata, tokens);
   }
 
   @Delete("files/:fileId")
@@ -90,6 +89,35 @@ export class DriveController {
     @Param("fileId") fileId: string
   ) {
     await this.validateAndSetAuth(tokens);
-    return this.driveService.deleteFile(fileId);
+    return this.driveService.deleteFile(fileId, tokens);
+  }
+
+  @Post("folders")
+  async createFolder(
+    @Headers("x-auth-tokens") tokens: string,
+    @Body() body: { folderName: string; metadata?: any }
+  ) {
+    console.log("tokens", tokens);
+    await this.validateAndSetAuth(tokens);
+    if (!body.folderName) {
+      throw new HttpException("No folder name provided", HttpStatus.BAD_REQUEST);
+    }
+    return this.driveService.createFolder(body.folderName, body.metadata, tokens);
+  }
+
+  @Post("files/move")
+  async moveFiles(
+    @Headers("x-auth-tokens") tokens: string,
+    @Body() body: { fileIds: string[]; destinationFolderId: string }
+  ) {
+    console.log("tokens", tokens);
+    await this.validateAndSetAuth(tokens);
+    if (!body.fileIds || !Array.isArray(body.fileIds) || body.fileIds.length === 0) {
+      throw new HttpException("No file IDs provided", HttpStatus.BAD_REQUEST);
+    }
+    if (!body.destinationFolderId) {
+      throw new HttpException("No destination folder ID provided", HttpStatus.BAD_REQUEST);
+    }
+    return this.driveService.moveFiles(body.fileIds, body.destinationFolderId, tokens);
   }
 }

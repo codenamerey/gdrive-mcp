@@ -12,7 +12,7 @@ export class AuthController {
   }
 
   @Get('google/callback')
-  async handleCallback(@Query('code') code: string) {
+  async handleCallback(@Query('code') code: string): Promise<{ tokens: any }> {
     try {
       const tokens = await this.authService.getTokens(code);
       return { tokens };

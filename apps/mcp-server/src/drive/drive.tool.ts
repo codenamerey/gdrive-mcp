@@ -80,7 +80,12 @@ export class DriveTool {
     description: "Get a specific file from Google Drive",
     parameters: z.object({
       fileId: z.string().describe("The ID of the file to get"),
-      tokens: z.string().describe("OAuth2 tokens for authentication"),
+      tokens: z
+        .object({
+          access_token: z.string(),
+          refresh_token: z.string(),
+        })
+        .describe("OAuth2 tokens for authentication"),
     }),
   })
   async getFile({ fileId, tokens }, context: Context) {
@@ -98,8 +103,8 @@ export class DriveTool {
             text: "File retrieved successfully",
           },
           {
-            type: "json",
-            json: result,
+            type: "text",
+            text: JSON.stringify(result, null, 2),
           },
         ],
       };
@@ -117,79 +122,52 @@ export class DriveTool {
   }
 
   @Tool({
-    name: "create-file",
-    description: "Create a new file in Google Drive",
+    name: "create-files",
+    description: "Create multiple files in Google Drive",
     parameters: z.object({
-      fileName: z.string().describe("The name of the file"),
-      mimeType: z
-        .string()
-        .default("text/plain")
-        .describe("The MIME type of the file"),
-      content: z
-        .string()
-        .describe("The content of the file (base64 encoded for binary files)"),
-      isBase64: z
-        .boolean()
-        .default(false)
-        .describe("Whether the content is base64 encoded"),
+      filePaths: z.array(z.string()).describe("Array of paths to the files to upload"),
       metadata: z
         .record(z.string())
         .optional()
-        .describe("Additional metadata for the file"),
+        .describe("Additional metadata for the files"),
       tokens: z
-        .string()
+        .object({
+          access_token: z.string(),
+          refresh_token: z.string(),
+        })
         .optional()
         .describe("OAuth2 tokens for authentication"),
     }),
   })
-  async createFile(
-    { fileName, mimeType, content, isBase64, metadata },
+  async createFiles(
+    { filePaths, metadata, tokens },
     context: Context
   ) {
     try {
-      // Get tokens from session context
-      const tokens = await this.getTokensFromContext(context);
-
-      // Report start progress
-      await context.reportProgress({ progress: 25, total: 100 });
-
-      // Convert content to Buffer
-      let buffer;
-      if (isBase64) {
-        buffer = Buffer.from(content, "base64");
-      } else {
-        buffer = Buffer.from(content, "utf-8");
-      }
-
-      // Report mid progress
+      // Report progress
       await context.reportProgress({ progress: 50, total: 100 });
 
       // Call the drive service
-      const result = await this.driveService.createFile(
-        tokens,
-        buffer,
-        fileName,
-        mimeType,
-        metadata
+      const result = await this.driveService.createFiles(
+        filePaths,
+        metadata,
+        tokens
       );
-
-      // Report completion
-      await context.reportProgress({ progress: 100, total: 100 });
 
       return {
         content: [
           {
             type: "text",
-            text: "File created successfully",
+            text: result.message,
           },
           {
-            type: "json",
-            json: result,
+            type: "text",
+            text: JSON.stringify(result.files, null, 2),
           },
         ],
       };
     } catch (error) {
-      this.logger.error(`Failed to create file: ${error.message}`);
+      this.logger.error(`Failed to create files: ${error.message}`);
       return {
         content: [
           {
@@ -225,21 +203,21 @@ export class DriveTool {
         .optional()
         .describe("Additional metadata for the file"),
       tokens: z
-        .string()
+        .object({
+          access_token: z.string(),
+          refresh_token: z.string(),
+        })
         .optional()
         .describe("OAuth2 tokens for authentication"),
     }),
   })
   async updateFile(
-    { fileId, fileName, mimeType, content, isBase64, metadata },
+    { fileId, fileName, mimeType, content, isBase64, metadata, tokens },
     context: Context
   ) {
     try {
-      // Get tokens from session context
-      const tokens = await this.getTokensFromContext(context);
-
-      // Report start progress
-      await context.reportProgress({ progress: 25, total: 100 });
+      // Report progress
+      await context.reportProgress({ progress: 50, total: 100 });
 
       // Convert content to Buffer
       let buffer;
@@ -248,9 +226,6 @@ export class DriveTool {
       } else {
         buffer = Buffer.from(content, "utf-8");
       }
-
-      // Report mid progress
-      await context.reportProgress({ progress: 50, total: 100 });
 
       // Call the drive service
       const result = await this.driveService.updateFile(
@@ -262,9 +237,6 @@ export class DriveTool {
         metadata
       );
 
-      // Report completion
-      await context.reportProgress({ progress: 100, total: 100 });
-
       return {
         content: [
           {
@@ -272,8 +244,8 @@ export class DriveTool {
             text: "File updated successfully",
           },
           {
-            type: "json",
-            json: result,
+            type: "text",
+            text: JSON.stringify(result, null, 2),
           },
         ],
       };
@@ -295,7 +267,12 @@ export class DriveTool {
     description: "Delete a file from Google Drive",
     parameters: z.object({
       fileId: z.string().describe("The ID of the file to delete"),
-      tokens: z.string().describe("OAuth2 tokens for authentication"),
+      tokens: z
+        .object({
+          access_token: z.string(),
+          refresh_token: z.string(),
+        })
+        .describe("OAuth2 tokens for authentication"),
     }),
   })
   async deleteFile({ fileId, tokens }, context: Context) {
@@ -313,13 +290,126 @@ export class DriveTool {
             text: "File deleted successfully",
           },
           {
-            type: "json",
-            json: result,
+            type: "text",
+            text: JSON.stringify(result, null, 2),
           },
         ],
       };
     } catch (error) {
       this.logger.error(`Failed to delete file: ${error.message}`);
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error: ${error.message}`,
+          },
+        ],
+      };
+    }
+  }
+
+  @Tool({
+    name: "create-folder",
+    description: "Create a new folder in Google Drive",
+    parameters: z.object({
+      folderName: z.string().describe("The name of the folder to create"),
+      metadata: z
+        .record(z.string())
+        .optional()
+        .describe("Additional metadata for the folder"),
+      tokens: z
+        .object({
+          access_token: z.string(),
+          refresh_token: z.string(),
+        })
+        .optional()
+        .describe("OAuth2 tokens for authentication"),
+    }),
+  })
+  async createFolder(
+    { folderName, metadata, tokens },
+    context: Context
+  ) {
+    try {
+      // Report progress
+      await context.reportProgress({ progress: 50, total: 100 });
+
+      // Call the drive service
+      const result = await this.driveService.createFolder(
+        folderName,
+        metadata,
+        tokens
+      );
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: "Folder created successfully",
+          },
+          {
+            type: "text",
+            text: JSON.stringify(result, null, 2),
+          },
+        ],
+      };
+    } catch (error) {
+      this.logger.error(`Failed to create folder: ${error.message}`);
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error: ${error.message}`,
+          },
+        ],
+      };
+    }
+  }
+
+  @Tool({
+    name: "move-files",
+    description: "Move multiple files to a different folder in Google Drive",
+    parameters: z.object({
+      fileIds: z.array(z.string()).describe("Array of file IDs to move"),
+      destinationFolderId: z.string().describe("ID of the destination folder"),
+      tokens: z
+        .object({
+          access_token: z.string(),
+          refresh_token: z.string(),
+        })
+        .optional()
+        .describe("OAuth2 tokens for authentication"),
+    }),
+  })
+  async moveFiles(
+    { fileIds, destinationFolderId, tokens },
+    context: Context
+  ) {
+    try {
+      // Report progress
+      await context.reportProgress({ progress: 50, total: 100 });
+
+      // Call the drive service
+      const result = await this.driveService.moveFiles(
+        fileIds,
+        destinationFolderId,
+        tokens
+      );
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: result.message,
+          },
+          {
+            type: "text",
+            text: JSON.stringify(result.files, null, 2),
+          },
+        ],
+      };
+    } catch (error) {
+      this.logger.error(`Failed to move files: ${error.message}`);
       return {
         content: [
           {

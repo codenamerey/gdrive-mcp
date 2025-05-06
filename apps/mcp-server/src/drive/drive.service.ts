@@ -66,12 +66,10 @@ export class DriveService {
     }
   }
 
-  async createFile(
-    tokens: any,
-    file: Buffer,
-    fileName: string,
-    mimeType: string,
-    metadata: any = {}
+  async createFiles(
+    filePaths: string[],
+    metadata: any = {},
+    tokens?: any
   ) {
     try {
       // Validate tokens before making the request
@@ -80,32 +78,24 @@ export class DriveService {
         throw new Error("Invalid or expired tokens");
       }
 
-      const formData = new FormData();
-      formData.append("file", file, {
-        filename: fileName,
-        contentType: mimeType,
-      });
-
-      // Add metadata
-      Object.keys(metadata).forEach((key) => {
-        formData.append(key, metadata[key]);
-      });
-
       const response = await axios.post(
         `${this.driveServerUrl}/drive/files`,
-        formData,
+        {
+          filePaths,
+          metadata
+        },
         {
           headers: {
             "x-auth-tokens": JSON.stringify(tokens),
-            ...formData.getHeaders(),
+            "Content-Type": "application/json"
           },
         }
       );
 
       return response.data;
     } catch (error) {
-      this.logger.error(`Failed to create file: ${error.message}`);
-      throw new Error(`Failed to create file: ${error.message}`);
+      this.logger.error(`Failed to create files: ${error.message}`);
+      throw new Error(`Failed to create files: ${error.message}`);
     }
   }
 
@@ -174,6 +164,72 @@ export class DriveService {
     } catch (error) {
       this.logger.error(`Failed to delete file: ${error.message}`);
       throw new Error(`Failed to delete file: ${error.message}`);
+    }
+  }
+
+  async createFolder(
+    folderName: string,
+    metadata: any = {},
+    tokens?: any
+  ) {
+    try {
+      // Validate tokens before making the request
+      const isValid = await this.authService.validateTokens(tokens);
+      if (!isValid) {
+        throw new Error("Invalid or expired tokens");
+      }
+
+      const response = await axios.post(
+        `${this.driveServerUrl}/drive/folders`,
+        {
+          folderName,
+          metadata
+        },
+        {
+          headers: {
+            "x-auth-tokens": JSON.stringify(tokens),
+            "Content-Type": "application/json"
+          },
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      this.logger.error(`Failed to create folder: ${error.message}`);
+      throw new Error(`Failed to create folder: ${error.message}`);
+    }
+  }
+
+  async moveFiles(
+    fileIds: string[],
+    destinationFolderId: string,
+    tokens?: any
+  ) {
+    try {
+      // Validate tokens before making the request
+      const isValid = await this.authService.validateTokens(tokens);
+      if (!isValid) {
+        throw new Error("Invalid or expired tokens");
+      }
+
+      const response = await axios.post(
+        `${this.driveServerUrl}/drive/files/move`,
+        {
+          fileIds,
+          destinationFolderId
+        },
+        {
+          headers: {
+            "x-auth-tokens": JSON.stringify(tokens),
+            "Content-Type": "application/json"
+          },
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      this.logger.error(`Failed to move files: ${error.message}`);
+      throw new Error(`Failed to move files: ${error.message}`);
     }
   }
 }
