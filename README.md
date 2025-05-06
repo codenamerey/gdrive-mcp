@@ -1,4 +1,4 @@
-# Google Drive MCP (Microservice Control Panel)
+# Google Drive MCP (Model Context Protocol)
 
 This project consists of two separate NestJS servers:
 
