@@ -1,6 +1,7 @@
 # Google Drive MCP (Microservice Control Panel)
 
 This project consists of two separate NestJS servers:
+
 1. Auth Server - Handles Google OAuth2 authentication
 2. Drive Server - Handles Google Drive CRUD operations
 
@@ -15,11 +16,13 @@ This project consists of two separate NestJS servers:
 
 1. Clone the repository
 2. Install dependencies:
+
    ```bash
    npm install
    ```
 
 3. Create a `.env` file in the root directory with the following variables:
+
    ```
    # OAuth Server Configuration
    AUTH_SERVER_PORT=3000
@@ -41,6 +44,7 @@ This project consists of two separate NestJS servers:
 ## Running the Servers
 
 1. Start the Auth Server:
+
    ```bash
    npm run start:auth
    ```
@@ -90,4 +94,29 @@ npm run dev:drive
 4. Implement rate limiting
 5. Add proper error handling
 6. Add request validation
-7. Implement proper logging 
+7. Implement proper logging
+
+## Using with Claude
+
+This MCP server allows Claude to access and interact with your Google Drive files. When properly configured, Claude can search, list, and read your files directly.
+
+### Configuration for Claude Desktop
+
+Add the following configuration to your Claude Desktop configuration file:
+
+```json
+{
+  "mcpServers": {
+    "google-drive-mcp": {
+      "command": "node",
+      "args": ["/path/to/google-drive-mcp/dist/index.js"],
+      "env": {
+        "GDRIVE_CREDS_DIR": "/path/to/config/directory",
+        "CLIENT_ID": "your-google-client-id",
+        "CLIENT_SECRET": "your-google-client-secret"
+      },
+      "description": "This server connects Claude to Google Drive, allowing it to search, list, and read your files. You can ask Claude to find specific documents, read file contents, or work with data from your Google Drive."
+    }
+  }
+}
+```
