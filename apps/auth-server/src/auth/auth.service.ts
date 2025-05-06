@@ -1,59 +1,52 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { google, Auth } from 'googleapis';
+import { Injectable } from "@nestjs/common";
+import * as fs from "fs";
+import { google } from "googleapis";
+import * as path from "path";
 
 @Injectable()
 export class AuthService {
-  private oauth2Client: Auth.OAuth2Client;
-  private readonly logger = new Logger(AuthService.name);
+  private readonly oauth2Client;
+  private readonly TOKENS_FILE = path.join(
+    process.cwd(),
+    "tokens.csv"
+  );
 
-  constructor(private configService: ConfigService) {
-    const clientId = this.configService.get('GOOGLE_CLIENT_ID');
-    const clientSecret = this.configService.get('GOOGLE_CLIENT_SECRET');
-    const redirectUri = this.configService.get('GOOGLE_REDIRECT_URI');
-
-    this.logger.debug(`Client ID: ${clientId}`);
-    this.logger.debug(`Redirect URI: ${redirectUri}`);
-
-    if (!clientId || !clientSecret || !redirectUri) {
-      throw new Error('Missing required OAuth configuration');
-    }
-
+  constructor() {
     this.oauth2Client = new google.auth.OAuth2(
-      clientId,
-      clientSecret,
-      redirectUri,
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      process.env.GOOGLE_REDIRECT_URI
     );
   }
 
   generateAuthUrl(): string {
-    const scopes = [
-      'https://www.googleapis.com/auth/drive.file',
-      'https://www.googleapis.com/auth/drive.readonly',
-    ];
-
-    const redirectUri = this.configService.get('GOOGLE_REDIRECT_URI');
-    this.logger.debug(`Using redirect URI: ${redirectUri}`);
-
     return this.oauth2Client.generateAuthUrl({
-      access_type: 'offline',
-      scope: scopes,
-      prompt: 'consent',
-      redirect_uri: redirectUri,
+      access_type: "offline",
+      scope: ["https://www.googleapis.com/auth/drive"],
+      prompt: "consent",
     });
   }
 
   async getTokens(code: string) {
-    try {
-      const { tokens } = await this.oauth2Client.getToken(code);
-      this.oauth2Client.setCredentials(tokens);
-      return tokens;
-    } catch (error) {
-      throw new Error('Failed to get tokens: ' + error.message);
-    }
+    const { tokens } = await this.oauth2Client.getToken(code);
+    await this.saveTokens(tokens);
+    return tokens;
   }
 
-  getOAuthClient() {
-    return this.oauth2Client;
+  private async saveTokens(tokens: any) {
+    const csvContent = `access_token,refresh_token\n${tokens.access_token},${tokens.refresh_token}`;
+    await fs.promises.writeFile(this.TOKENS_FILE, csvContent);
   }
-} 
+
+  async getStoredTokens() {
+    try {
+      const content = await fs.promises.readFile(this.TOKENS_FILE, "utf-8");
+      const [header, data] = content.split("\n");
+      const [access_token, refresh_token] = data.split(",");
+      console.log("access_token", access_token);
+      return { access_token, refresh_token };
+    } catch (error) {
+      return null;
+    }
+  }
+}

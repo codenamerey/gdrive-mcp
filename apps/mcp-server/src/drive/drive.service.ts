@@ -167,6 +167,34 @@ export class DriveService {
     }
   }
 
+  async deleteFiles(tokens: any, fileIds: string[]) {
+    try {
+      // Validate tokens before making the request
+      const isValid = await this.authService.validateTokens(tokens);
+      if (!isValid) {
+        throw new Error("Invalid or expired tokens");
+      }
+
+      const response = await axios.delete(
+        `${this.driveServerUrl}/drive/files`,
+        {
+          headers: {
+            "x-auth-tokens": JSON.stringify(tokens),
+            "Content-Type": "application/json"
+          },
+          data: {
+            fileIds
+          }
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      this.logger.error(`Failed to delete files: ${error.message}`);
+      throw new Error(`Failed to delete files: ${error.message}`);
+    }
+  }
+
   async createFolder(
     folderName: string,
     metadata: any = {},
@@ -230,6 +258,52 @@ export class DriveService {
     } catch (error) {
       this.logger.error(`Failed to move files: ${error.message}`);
       throw new Error(`Failed to move files: ${error.message}`);
+    }
+  }
+
+  async listFolders(tokens: any, pageSize?: number, pageToken?: string) {
+    try {
+      // Validate tokens before making the request
+      // const isValid = await this.authService.validateTokens(tokens);
+      // if (!isValid) {
+      //   throw new Error('Invalid or expired tokens');
+      // }
+
+      const response = await axios.get(`${this.driveServerUrl}/drive/folders`, {
+        headers: {
+          "x-auth-tokens": JSON.stringify(tokens),
+        },
+        params: {
+          pageSize,
+          pageToken,
+        },
+      });
+
+      return response.data;
+    } catch (error) {
+      this.logger.error(`Failed to list folders: ${error.message}`);
+      throw new Error(`Failed to list folders: ${error.message}`);
+    }
+  }
+
+  async queryFiles(tokens: any, query: string, fields?: string, pageSize?: number, pageToken?: string) {
+    try {
+      const response = await axios.get(`${this.driveServerUrl}/drive/query`, {
+        headers: {
+          "x-auth-tokens": JSON.stringify(tokens),
+        },
+        params: {
+          q: query,
+          fields,
+          pageSize,
+          pageToken,
+        },
+      });
+
+      return response.data;
+    } catch (error) {
+      this.logger.error(`Failed to query files: ${error.message}`);
+      throw new Error(`Failed to query files: ${error.message}`);
     }
   }
 }

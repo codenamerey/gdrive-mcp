@@ -92,6 +92,18 @@ export class DriveController {
     return this.driveService.deleteFile(fileId, tokens);
   }
 
+  @Delete("files")
+  async deleteFiles(
+    @Headers("x-auth-tokens") tokens: string,
+    @Body() body: { fileIds: string[] }
+  ) {
+    await this.validateAndSetAuth(tokens);
+    if (!body.fileIds || !Array.isArray(body.fileIds) || body.fileIds.length === 0) {
+      throw new HttpException("No file IDs provided", HttpStatus.BAD_REQUEST);
+    }
+    return this.driveService.deleteFiles(body.fileIds, tokens);
+  }
+
   @Post("folders")
   async createFolder(
     @Headers("x-auth-tokens") tokens: string,
@@ -119,5 +131,30 @@ export class DriveController {
       throw new HttpException("No destination folder ID provided", HttpStatus.BAD_REQUEST);
     }
     return this.driveService.moveFiles(body.fileIds, body.destinationFolderId, tokens);
+  }
+
+  @Get("folders")
+  async listFolders(
+    @Headers("x-auth-tokens") tokens: string,
+    @Query("pageSize") pageSize?: number,
+    @Query("pageToken") pageToken?: string
+  ) {
+    await this.validateAndSetAuth(tokens);
+    return this.driveService.listFolders(pageSize, pageToken, tokens);
+  }
+
+  @Get("query")
+  async queryFiles(
+    @Headers("x-auth-tokens") tokens: string,
+    @Query("q") query: string,
+    @Query("fields") fields?: string,
+    @Query("pageSize") pageSize?: number,
+    @Query("pageToken") pageToken?: string
+  ) {
+    await this.validateAndSetAuth(tokens);
+    if (!query) {
+      throw new HttpException("Query parameter 'q' is required", HttpStatus.BAD_REQUEST);
+    }
+    return this.driveService.queryFiles(query, fields, pageSize, pageToken, tokens);
   }
 }

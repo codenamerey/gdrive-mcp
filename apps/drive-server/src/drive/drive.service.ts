@@ -267,6 +267,53 @@ export class DriveService {
     }
   }
 
+  async deleteFiles(fileIds: string[], tokens?: any) {
+    try {
+      if (!Array.isArray(fileIds) || fileIds.length === 0) {
+        throw new HttpException(
+          "No file IDs provided",
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
+      if (tokens) {
+        let parsedTokens = JSON.parse(tokens);
+        if (typeof parsedTokens === "string") {
+          parsedTokens = JSON.parse(parsedTokens);
+        }
+        const auth = new Auth.OAuth2Client();
+        auth.setCredentials(parsedTokens);
+        await this.setAuthClient(auth);
+      }
+
+      const results = [];
+      const errors = [];
+
+      for (const fileId of fileIds) {
+        try {
+          await this.drive.files.delete({
+            fileId,
+          });
+          results.push({ fileId, status: 'success' });
+        } catch (error) {
+          errors.push({ fileId, error: error.message });
+        }
+      }
+
+      return {
+        message: `Successfully deleted ${results.length} files${errors.length > 0 ? `, ${errors.length} failed` : ''}`,
+        results,
+        errors: errors.length > 0 ? errors : undefined
+      };
+    } catch (error) {
+      console.log("Error deleting files:", error);
+      throw new HttpException(
+        "Failed to delete files",
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
   async createFolder(folderName: string, metadata: any = {}, tokens?: any) {
     try {
       if (tokens) {
@@ -377,6 +424,66 @@ export class DriveService {
       });
       throw new HttpException(
         `Failed to move files: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  async listFolders(pageSize = 10, pageToken?: string, tokens?: any) {
+    try {
+      if (tokens) {
+        let parsedTokens = JSON.parse(tokens);
+        if (typeof parsedTokens === "string") {
+          parsedTokens = JSON.parse(parsedTokens);
+        }
+        const auth = new Auth.OAuth2Client();
+        auth.setCredentials(parsedTokens);
+        await this.setAuthClient(auth);
+      }
+
+      const response = await this.drive.files.list({
+        pageSize,
+        pageToken,
+        q: "mimeType='application/vnd.google-apps.folder'",
+        fields: "nextPageToken, files(id, name, mimeType, createdTime, parents)",
+        orderBy: "name"
+      });
+
+      return response.data;
+    } catch (error) {
+      console.log("Error listing folders:", error);
+      throw new HttpException(
+        "Failed to list folders",
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  async queryFiles(query: string, fields: string = "nextPageToken, files(id, name, mimeType, size, createdTime, parents)", pageSize: number = 10, pageToken?: string, tokens?: any) {
+    try {
+      if (tokens) {
+        let parsedTokens = JSON.parse(tokens);
+        if (typeof parsedTokens === "string") {
+          parsedTokens = JSON.parse(parsedTokens);
+        }
+        const auth = new Auth.OAuth2Client();
+        auth.setCredentials(parsedTokens);
+        await this.setAuthClient(auth);
+      }
+
+      const response = await this.drive.files.list({
+        q: query,
+        fields,
+        pageSize,
+        pageToken,
+        orderBy: "name"
+      });
+
+      return response.data;
+    } catch (error) {
+      console.log("Error querying files:", error);
+      throw new HttpException(
+        "Failed to query files",
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
