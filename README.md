@@ -100,6 +100,12 @@ npm run dev:drive
 
 This MCP server allows Claude to access and interact with your Google Drive files. When properly configured, Claude can search, list, and read your files directly.
 
+First, build the MCP server
+
+```
+npm run build:mcp
+```
+
 ### Configuration for Claude Desktop
 
 Add the following configuration to your Claude Desktop configuration file:
